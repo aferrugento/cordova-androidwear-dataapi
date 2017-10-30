@@ -67,11 +67,50 @@ public class WearDataApiService extends WearableListenerService
   @Override
   public void onDataChanged(DataEventBuffer dataEventBuffer) {
     if (WearDataApiPlugin.WearDataApiPluginSingleton != null) {
-      WearDataApiPlugin.WearDataApiPluginSingleton.onDataChanged(dataEventBuffer);
+      String data = "";
+
+      for (DataEvent event : dataEventBuffer) {
+        if (event.getType() == DataEvent.TYPE_CHANGED &&
+                event.getDataItem().getUri().getPath().equals("/fitsix/stats")) {
+          DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
+          Asset profileAsset = dataMapItem.getDataMap().getAsset("fitsixStats");
+          data = loadFileFromAsset(profileAsset);
+          try {
+            WearDataApiPlugin.WearDataApiPluginSingleton.onDataChanged(data);
+          } catch (JSONException e) {
+            e.printStackTrace();
+          }
+        }
+      }
     } else {
       Log.d(TAG, "onDataChanged but no DataListeners.");
     }
   }
+
+  private String loadFileFromAsset(Asset asset) {
+    if (asset == null) {
+      throw new IllegalArgumentException("Asset must be non-null");
+    }
+    ConnectionResult result =
+            mGoogleApiClient.blockingConnect(1000, TimeUnit.MILLISECONDS);
+    if (!result.isSuccess()) {
+      return "";
+    }
+    InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
+            mGoogleApiClient, asset).await().getInputStream();
+//        mGoogleApiClient.disconnect();
+    if (assetInputStream == null) {
+      Log.w(TAG, "Requested an unknown Asset.");
+      return "";
+    }
+    return convertStreamToString(assetInputStream);
+  }
+
+  private String convertStreamToString(java.io.InputStream is) {
+    java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+    return s.hasNext() ? s.next() : "";
+  }
+
 
   // methods below form a thin wrapper around the DataApi for use in the Plugin
   public PendingResult<DataApi.DataItemResult> putDataRequest(PutDataRequest data) {

@@ -214,4 +214,16 @@ public class WearDataApiPlugin extends CordovaPlugin
       registeredDataReceiver.sendPluginResult(result);
     }
   }
+
+  public void onDataChanged(String dataEventBuffer) throws JSONException {
+    JSONObject results = new JSONObject(dataEventBuffer);
+
+    for (CallbackContext registeredDataReceiver: registeredListeners) {
+      // don't just call success() because that will dispose the callback
+      // so we have to return a PluginResult instead
+      PluginResult result = new PluginResult(PluginResult.Status.OK, results);
+      result.setKeepCallback(true);
+      registeredDataReceiver.sendPluginResult(result);
+    }
+  }
 }
